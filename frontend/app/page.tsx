@@ -8,6 +8,12 @@ export default function Home() {
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           This page is not built yet.
         </p>
+        <button
+          type="button"
+          className="mt-6 w-fit rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
+        >
+          Connect Instagram
+        </button>
       </main>
     </div>
   );

@@ -32,7 +32,7 @@ The fast-path receiver/worker must run on an always-warm, persistent process —
 | Layer | Choice |
 |---|---|
 | Frontend | Next.js (TypeScript), Tailwind + shadcn/ui, Recharts for performance charts |
-| Main API (slow path) | Node.js/TypeScript (Fastify or Next.js API routes) |
+| Backend API (slow path) | Node.js/TypeScript (Hono node js template) |
 | Fast-path service | Node.js/Fastify on a persistent container (Railway / Fly.io / Render / AWS Fargate) — no serverless |
 | Queue + rule cache | Redis (BullMQ) |
 | Database | PostgreSQL + Drizzle ORM |
@@ -58,7 +58,7 @@ The fast-path receiver/worker must run on an always-warm, persistent process —
 - `automation_logs` — comment id, latency_ms, delivery status (feeds the performance dashboard)
 
 ## Status
-Tech stack decided. Frontend scaffolded (Next.js + Tailwind, `frontend/`), no backend code yet.
+Tech stack decided. Frontend scaffolded (Next.js + Tailwind, `frontend/`). Backend (`backend/`, Hono) has the Drizzle connection (`src/db/index.ts`, `pg` driver, reads `DATABASE_URL`), the full schema (`src/db/schema.ts`: better-auth tables + `ig_accounts`, `media`, `automations`, `automation_logs`), an initial migration in `backend/drizzle/`, and a better-auth config (`src/auth.ts`, not yet mounted on a route). No API routes yet.
 
 **Frontend so far:**
 - Sidebar layout (`app/components/Sidebar.tsx`, wired into `app/layout.tsx`) with two nav links: Home (`/`) and Automations (`/automations`).

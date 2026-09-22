@@ -7,7 +7,8 @@
     "start": "node dist/index.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:test": "tsx src/db/test-connection.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.1",

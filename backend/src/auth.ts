@@ -18,3 +18,13 @@ export async function getUserFromToken(token: string) {
   if (error || !data.user) return null
   return data.user
 }
+
+/** Creates a new Supabase Auth user with an email/password credential. */
+export async function signUpWithPassword(email: string, password: string) {
+  return supabase.auth.signUp({ email, password })
+}
+
+/** Verifies an email/password credential and returns a session for it. */
+export async function signInWithPassword(email: string, password: string) {
+  return supabase.auth.signInWithPassword({ email, password })
+}

@@ -1,6 +1,9 @@
+import AuthHashHandler from "../components/AuthHashHandler";
+
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
+      <AuthHashHandler />
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-12 sm:px-10">
         <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">
           Home

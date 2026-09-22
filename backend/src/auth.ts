@@ -21,10 +21,10 @@ export async function getUserFromToken(token: string) {
 
 /** Creates a new Supabase Auth user with an email/password credential. */
 export async function signUpWithPassword(email: string, password: string) {
-  return supabase.auth.signUp({ email, password })
+  return supabase.auth.signUp({ email, password, options:{emailRedirectTo:"http://localhost:3000/home"} })
 }
 
 /** Verifies an email/password credential and returns a session for it. */
 export async function signInWithPassword(email: string, password: string) {
-  return supabase.auth.signInWithPassword({ email, password })
+  return supabase.auth.signInWithPassword({ email, password})
 }

@@ -10,6 +10,10 @@ export function storeAccessToken(accessToken: string) {
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
 }
 
+export function signOut() {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+}
+
 async function postAuth(path: "signup" | "login", email: string, password: string) {
   const res = await fetch(`${API_URL}/auth/${path}`, {
     method: "POST",

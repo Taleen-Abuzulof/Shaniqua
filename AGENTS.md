@@ -36,7 +36,7 @@ The fast-path receiver/worker must run on an always-warm, persistent process —
 | Fast-path service | Node.js/Fastify on a persistent container (Railway / Fly.io / Render / AWS Fargate) — no serverless |
 | Queue + rule cache | Redis (BullMQ) |
 | Database | PostgreSQL + Drizzle ORM |
-| App auth | better-auth |
+| App auth | Supabase Auth (email/password), session in HttpOnly cookies set by the backend |
 | Instagram auth | Meta OAuth — Instagram API with Instagram Login, or Instagram API with Facebook Login |
 | DM sending | Meta Private Replies API (`POST /<IG_ID>/messages`, recipient = comment_id) |
 
@@ -58,11 +58,20 @@ The fast-path receiver/worker must run on an always-warm, persistent process —
 - `automation_logs` — comment id, latency_ms, delivery status (feeds the performance dashboard)
 
 ## Status
-Tech stack decided. Frontend scaffolded (Next.js + Tailwind, `frontend/`). Backend (`backend/`, Hono) has the Drizzle connection (`src/db/index.ts`, `pg` driver, reads `DATABASE_URL`), the full schema (`src/db/schema.ts`: better-auth tables + `ig_accounts`, `media`, `automations`, `automation_logs`), an initial migration in `backend/drizzle/`, and a better-auth config (`src/auth.ts`, not yet mounted on a route). No API routes yet.
+Tech stack decided. Frontend scaffolded (Next.js + Tailwind, `frontend/`). Backend (`backend/`, Hono) has the Drizzle connection (`src/db/index.ts`, `pg` driver, reads `DATABASE_URL`), the full schema (`src/db/schema.ts`: references Supabase's `auth.users` + `ig_accounts`, `media`, `automations`, `automation_logs`), and an initial migration in `backend/drizzle/`.
+
+**Auth (Supabase Auth, cookie sessions):**
+- `backend/src/auth.ts` — Supabase service-role client + helpers. Session-producing calls (sign in/up, refresh) each use a fresh client, because supabase-js keeps a session in memory and the shared service-role client would otherwise act as that user.
+- `backend/src/session.ts` — `sb_access` / `sb_refresh` cookies (HttpOnly, SameSite=Lax, Secure in prod; refresh cookie 30 days) and the `requireAuth` middleware: verifies the access cookie, silently refreshes via the refresh cookie when it's missing/expired, exposes `c.get('user')`. Use it on all protected routes.
+- `backend/src/routes/auth.ts` — `GET /auth/session`, `POST /auth/signup`, `/auth/login`, `/auth/exchange` (email-confirmation refresh token → cookies), `/auth/logout`. Responses never contain tokens.
+- `backend/src/index.ts` — CORS locked to `FRONTEND_URL` with credentials; Hono `csrf` middleware rejects cross-origin form posts.
+- Frontend never touches tokens (no `localStorage`): `frontend/lib/api.ts` sends `credentials: "include"`; `lib/useSession.ts` asks `/auth/session`. `components/RequireAuth.tsx` gates app pages, `components/RedirectIfAuthenticated.tsx` gates login/signup, `components/AuthHashHandler.tsx` (wraps `RequireAuth` in `app/home/layout.tsx`) exchanges the confirmation-link fragment before the session check.
+- Production: frontend and API must share a parent domain (or proxy the API through Next.js rewrites) so SameSite=Lax cookies are sent.
 
 **Frontend so far:**
-- Sidebar layout (`app/components/Sidebar.tsx`, wired into `app/layout.tsx`) with two nav links: Home (`/`) and Automations (`/automations`).
-- `/` — Home page, placeholder only, not built yet.
+- `/` — public landing page linking to signup/login. `/login`, `/signup` — auth forms.
+- App pages use `components/AppShell.tsx` + `components/Sidebar.tsx` (nav: Home `/home`, Automations `/automations`; account menu with sign out), behind `RequireAuth`.
+- `/home` — placeholder with a "Connect Instagram" button (not wired yet).
 - `/automations` — automations dashboard: lists current automations (mock data for now, no API) as cards showing trigger keyword, target post/reel, active/paused status, and delivery rate / avg latency / DM volume; includes an empty state. Has an "Add automation" button.
 - `/automations/new` — placeholder route the "Add automation" button links to; form not built yet.
 - No shadcn/ui or Recharts installed yet despite being the planned choice — current UI is hand-rolled Tailwind matching the create-next-app starter style (zinc palette, dark mode via `prefers-color-scheme`).

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { signUp } from "../../lib/api";
+import RedirectIfAuthenticated from "../../components/RedirectIfAuthenticated";
 
 export default function Signup() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function Signup() {
       return;
     }
 
-    if (data.session) {
+    if (data.authenticated) {
       router.push("/home");
       router.refresh();
       return;
@@ -50,6 +51,7 @@ export default function Signup() {
   }
 
   return (
+    <RedirectIfAuthenticated>
     <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
       <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-6 py-12">
         <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">
@@ -154,5 +156,6 @@ export default function Signup() {
         </p>
       </main>
     </div>
+    </RedirectIfAuthenticated>
   );
 }

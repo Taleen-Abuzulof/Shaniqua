@@ -37,8 +37,8 @@ export default function Sidebar() {
     };
   }, [menuOpen]);
 
-  function handleSignOut() {
-    signOut();
+  async function handleSignOut() {
+    await signOut();
     setMenuOpen(false);
     router.push("/login");
     router.refresh();

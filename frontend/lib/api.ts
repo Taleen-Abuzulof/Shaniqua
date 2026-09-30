@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+// Same-origin by default: next.config.ts proxies `/api/*` to the backend.
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
 // The session lives in HttpOnly cookies set by the backend, so this file never
 // sees a token: every request just sends cookies along with `credentials`.

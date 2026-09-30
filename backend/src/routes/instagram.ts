@@ -18,14 +18,16 @@ export const instagramRoutes = new Hono<AuthEnv>()
 
 instagramRoutes.use('*', requireAuth)
 
-// The OAuth `state` lives in a signed, HttpOnly cookie scoped to the connect
-// endpoints, bound to the user who started the flow, valid for 10 minutes.
+// The OAuth `state` lives in a signed, HttpOnly cookie bound to the user who
+// started the flow, valid for 10 minutes. Path is `/` because the browser may
+// reach this API under a proxy prefix (the frontend's `/api/*` rewrite), so a
+// path scoped to `/instagram/connect` would never be sent back.
 const STATE_COOKIE = 'ig_oauth_state'
 const stateCookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'Lax',
-  path: '/instagram/connect',
+  path: '/',
 } as const
 
 function getStateSecret() {

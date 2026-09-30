@@ -1,6 +1,10 @@
 {
+  "type": "module",
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
-    "@supabase/supabase-js": "^2.116.0"
+    "@supabase/supabase-js": "^2.116.0",
+    "express": "^5.2.1",
+    "fastify": "^5.12.5",
+    "http-proxy-middleware": "^4.2.0"
   }
 }

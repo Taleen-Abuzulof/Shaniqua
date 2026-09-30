@@ -68,10 +68,16 @@ Tech stack decided. Frontend scaffolded (Next.js + Tailwind, `frontend/`). Backe
 - Frontend never touches tokens (no `localStorage`): `frontend/lib/api.ts` sends `credentials: "include"`; `lib/useSession.ts` asks `/auth/session`. `components/RequireAuth.tsx` gates app pages, `components/RedirectIfAuthenticated.tsx` gates login/signup, `components/AuthHashHandler.tsx` (wraps `RequireAuth` in `app/home/layout.tsx`) exchanges the confirmation-link fragment before the session check.
 - Production: frontend and API must share a parent domain (or proxy the API through Next.js rewrites) so SameSite=Lax cookies are sent.
 
+**Instagram connection (Instagram API with Instagram Login, full-page OAuth redirect):**
+- `backend/src/instagram/api.ts` — graph.instagram.com client (authorize URL, code → short-lived → long-lived token, refresh, `/me`, paginated `/me/media`). Config read lazily from `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, `INSTAGRAM_REDIRECT_URI` (default `${FRONTEND_URL}/connect/instagram/callback`), `INSTAGRAM_GRAPH_VERSION` (default `v25.0`).
+- `backend/src/instagram/service.ts` — upserts `ig_accounts` (token AES-256-GCM encrypted via `src/crypto.ts` + `TOKEN_ENCRYPTION_KEY`; an IG account can belong to only one user), refreshes tokens within 7 days of expiry, marks `token_expired` on Graph error 190, syncs REELS into `media` (batched upsert).
+- `backend/src/routes/instagram.ts` (all behind `requireAuth`): `POST /instagram/connect/start` → `{ authorizeUrl }` and sets a signed HttpOnly `ig_oauth_state` cookie (`OAUTH_STATE_SECRET`, 10 min, bound to the user); `POST /instagram/connect/callback` `{ code, state }` → verifies state, connects, syncs reels; `GET /instagram/account`; `GET /instagram/reels` (re-syncs if older than 1h, since IG CDN URLs expire); `POST /instagram/reels/sync`. 409 + `reconnect: true` when the user must reconnect.
+- Frontend: `lib/api.ts` `connectInstagram()` redirects the tab to Instagram; `/connect/instagram/callback` (no-referrer, no-frame, noindex headers in `next.config.ts`) posts code/state to the backend then returns to `/home?instagram=connected|cancelled`.
+
 **Frontend so far:**
 - `/` — public landing page linking to signup/login. `/login`, `/signup` — auth forms.
 - App pages use `components/AppShell.tsx` + `components/Sidebar.tsx` (nav: Home `/home`, Automations `/automations`; account menu with sign out), behind `RequireAuth`.
-- `/home` — placeholder with a "Connect Instagram" button (not wired yet).
+- `/home` — `components/InstagramHome.tsx`: connect button when no account, reconnect prompt when the token expired, otherwise a grid of the user's reels (`components/ReelCard.tsx`) with a Refresh button.
 - `/automations` — automations dashboard: lists current automations (mock data for now, no API) as cards showing trigger keyword, target post/reel, active/paused status, and delivery rate / avg latency / DM volume; includes an empty state. Has an "Add automation" button.
 - `/automations/new` — placeholder route the "Add automation" button links to; form not built yet.
 - No shadcn/ui or Recharts installed yet despite being the planned choice — current UI is hand-rolled Tailwind matching the create-next-app starter style (zinc palette, dark mode via `prefers-color-scheme`).

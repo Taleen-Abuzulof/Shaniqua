@@ -9,17 +9,22 @@ const dateFormat = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
 });
 
-export default function ReelCard({ reel }: { reel: InstagramReel }) {
+export default function ReelCard({
+  reel,
+  onSelect,
+}: {
+  reel: InstagramReel;
+  onSelect: (reel: InstagramReel) => void;
+}) {
   // Instagram CDN URLs are signed and expire; fall back to a placeholder.
   const [imageFailed, setImageFailed] = useState(false);
   const imageUrl = reel.thumbnailUrl;
 
   return (
-    <a
-      href={reel.permalink}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex flex-col overflow-hidden rounded-xl border border-black/[.08] bg-white transition-colors hover:border-black/20 dark:border-white/[.145] dark:bg-[#0a0a0a] dark:hover:border-white/30"
+    <button
+      type="button"
+      onClick={() => onSelect(reel)}
+      className="group flex flex-col text-left overflow-hidden rounded-xl border border-black/[.08] bg-white transition-colors hover:border-black/20 dark:border-white/[.145] dark:bg-[#0a0a0a] dark:hover:border-white/30"
     >
       <div className="relative aspect-[9/16] w-full bg-zinc-100 dark:bg-zinc-900">
         {imageUrl && !imageFailed ? (
@@ -41,7 +46,7 @@ export default function ReelCard({ reel }: { reel: InstagramReel }) {
         )}
       </div>
       <div className="flex flex-1 flex-col gap-2 p-3">
-        <p className="line-clamp-2 text-sm text-black dark:text-zinc-50">
+        <p dir="auto" className="line-clamp-2 text-sm text-black dark:text-zinc-50">
           {reel.caption || (
             <span className="text-zinc-500 dark:text-zinc-400">No caption</span>
           )}
@@ -58,6 +63,6 @@ export default function ReelCard({ reel }: { reel: InstagramReel }) {
           </span>
         </div>
       </div>
-    </a>
+    </button>
   );
 }

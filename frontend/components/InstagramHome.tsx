@@ -7,8 +7,10 @@ import {
   getInstagramReels,
   needsInstagramReconnect,
   syncInstagramReels,
+  type InstagramReel,
   type InstagramReelsResponse,
 } from "../lib/api";
+import AutomationDrawer, { type AutomationDraft } from "./AutomationDrawer";
 import ConnectInstagramButton from "./ConnectInstagramButton";
 import ReelCard from "./ReelCard";
 
@@ -145,6 +147,14 @@ function ReelsSection({
   onSync: () => void;
 }) {
   const { account, reels, syncError } = data;
+  const [selectedReel, setSelectedReel] = useState<InstagramReel | null>(null);
+  const closeDrawer = useCallback(() => setSelectedReel(null), []);
+
+  function handleCreateAutomation(draft: AutomationDraft) {
+    // TODO: send the draft to the backend once the automations API exists.
+    void draft;
+    setSelectedReel(null);
+  }
 
   return (
     <section className="flex flex-col gap-4">
@@ -197,10 +207,19 @@ function ReelsSection({
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {reels.map((reel) => (
-            <ReelCard key={reel.id} reel={reel} />
+            <ReelCard key={reel.id} reel={reel} onSelect={setSelectedReel} />
           ))}
         </div>
       )}
+
+      {selectedReel ? (
+        <AutomationDrawer
+          key={selectedReel.id}
+          reel={selectedReel}
+          onClose={closeDrawer}
+          onSubmit={handleCreateAutomation}
+        />
+      ) : null}
     </section>
   );
 }

@@ -11,38 +11,7 @@ type Automation = {
   volume: number;
 };
 
-const automations: Automation[] = [
-  {
-    id: "1",
-    name: "Free guide DM",
-    trigger: "\"GUIDE\"",
-    media: "Reel: 5 tips for...",
-    status: "active",
-    deliveryRate: "99.2%",
-    avgLatencyMs: 1180,
-    volume: 342,
-  },
-  {
-    id: "2",
-    name: "Discount code",
-    trigger: "\"SALE\"",
-    media: "Post: New drop 🔥",
-    status: "active",
-    deliveryRate: "98.7%",
-    avgLatencyMs: 1340,
-    volume: 128,
-  },
-  {
-    id: "3",
-    name: "Waitlist signup",
-    trigger: "\"WAITLIST\"",
-    media: "Reel: behind the scenes",
-    status: "paused",
-    deliveryRate: "—",
-    avgLatencyMs: 0,
-    volume: 0,
-  },
-];
+const automations: Automation[] = [];
 
 function StatusBadge({ status }: { status: Automation["status"] }) {
   const isActive = status === "active";

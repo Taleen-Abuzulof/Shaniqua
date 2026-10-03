@@ -8,6 +8,7 @@ import {
   InstagramAccountConflictError,
   InstagramReconnectRequiredError,
   listReels,
+  ensureWebhookSubscription,
   REELS_STALE_AFTER_MS,
   syncReels,
   toAccountDto,
@@ -103,13 +104,13 @@ instagramRoutes.post('/connect/callback', async (c) => {
     return handleError(c, err, "Instagram couldn't complete the connection. Please try again.")
   }
 
-  // Pull the reels right away so the home page has them. The account is
-  // connected either way; a failed sync is retried on the next reels request.
-  try {
-    await syncReels(account)
-  } catch (err) {
-    console.error('Initial reels sync failed:', err)
-  }
+  // Pull the reels right away so the home page has them, and subscribe to
+  // comment webhooks. The account is connected either way; both are retried
+  // later (reels on the next reels request, the subscription whenever an
+  // automation is saved).
+  const [synced, subscribed] = await Promise.allSettled([syncReels(account), ensureWebhookSubscription(account)])
+  if (synced.status === 'rejected') console.error('Initial reels sync failed:', synced.reason)
+  if (subscribed.status === 'rejected') console.error('Webhook subscription failed:', subscribed.reason)
 
   return c.json({ account: toAccountDto(account) })
 })

@@ -8,6 +8,20 @@
       "when": 1789813956428,
       "tag": "0000_condemned_skrulls",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791026204302,
+      "tag": "0001_automations_drop_single_keyword",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791026207622,
+      "tag": "0002_automations_keywords_button_urls",
+      "breakpoints": true
     }
   ]
 }

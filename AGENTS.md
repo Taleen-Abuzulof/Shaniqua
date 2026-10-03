@@ -59,7 +59,12 @@ The fast-path receiver/worker must run on an always-warm, persistent process —
 - `automation_logs` — comment id, latency_ms, delivery status (feeds the performance dashboard)
 
 ## Status
-Tech stack decided. Frontend scaffolded (Next.js + Tailwind, `frontend/`). Backend (`backend/`, Hono) has the Drizzle connection (`src/db/index.ts`, `pg` driver, reads `DATABASE_URL`), the full schema (`src/db/schema.ts`: references Supabase's `auth.users` + `ig_accounts`, `media`, `automations`, `automation_logs`), and an initial migration in `backend/drizzle/`.
+Tech stack decided. Frontend scaffolded (Next.js + Tailwind, `frontend/`). Backend (`backend/`, Hono) has the Drizzle connection (`src/db/index.ts`, `pg` driver, reads `DATABASE_URL`); migrations live in `backend/drizzle/` (`npm run db:generate` / `db:migrate` in `backend/`).
+
+**Repo layout (npm workspaces):** the root `package.json` declares `packages/*`, `backend`, `shaniqua-api` as workspaces; run `npm install` from the root (with Windows npm when working from WSL, so native binaries match). `frontend/` is not a workspace and keeps its own lockfile.
+- `packages/shared` (`@shaniqua/shared`) — code both services need: `db/schema` (Drizzle schema: Supabase's `auth.users` + `ig_accounts`, `media`, `automations`, `automation_logs`), `crypto` (AES-256-GCM token encryption), `keywords` (`normalizeForMatch` / `matchesAnyKeyword`: case-insensitive "contains" matching that ignores Arabic vowel marks and tatweel, treats أ إ آ ٱ as ا, ؤ ئ as و ي, and Arabic-Indic digits as 0-9). Its `exports` use a `source` condition → `src/*.ts` (dev via `tsx --conditions=source`, and `customConditions` in each tsconfig) and `default` → `dist/*.js` (production), so build it first: `npm run build` at the root builds shared, then backend and shaniqua-api.
+- `automations`: one per reel (`media_id` unique); `keywords text[]`, `message_template`, `button_text`, `urls text[]` (one button; all links sent in the same message), optional `name`.
+- `shaniqua-api/` — fast-path Fastify service in TypeScript ESM (`src/app.ts` builds the app, `src/server.ts` listens on `PORT`, default 4100, with graceful shutdown). Only `GET /health` so far; webhook receiver and worker not built yet.
 
 **Auth (Supabase Auth, cookie sessions):**
 - `backend/src/auth.ts` — Supabase service-role client + helpers. Session-producing calls (sign in/up, refresh) each use a fresh client, because supabase-js keeps a session in memory and the shared service-role client would otherwise act as that user.
@@ -76,14 +81,19 @@ Tech stack decided. Frontend scaffolded (Next.js + Tailwind, `frontend/`). Backe
 
 **Instagram connection (Instagram API with Instagram Login, full-page OAuth redirect):**
 - `backend/src/instagram/api.ts` — graph.instagram.com client (authorize URL, code → short-lived → long-lived token, refresh, `/me`, paginated `/me/media`). Config read lazily from `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, `INSTAGRAM_REDIRECT_URI` (default `${FRONTEND_URL}/connect/instagram/callback`), `INSTAGRAM_GRAPH_VERSION` (default `v25.0`).
-- `backend/src/instagram/service.ts` — upserts `ig_accounts` (token AES-256-GCM encrypted via `src/crypto.ts` + `TOKEN_ENCRYPTION_KEY`; an IG account can belong to only one user), refreshes tokens within 7 days of expiry, marks `token_expired` on Graph error 190, syncs REELS into `media` (batched upsert).
+- `backend/src/instagram/service.ts` — upserts `ig_accounts` (token AES-256-GCM encrypted via `@shaniqua/shared/crypto` + `TOKEN_ENCRYPTION_KEY`; an IG account can belong to only one user), refreshes tokens within 7 days of expiry, marks `token_expired` on Graph error 190, syncs REELS into `media` (batched upsert).
 - `backend/src/routes/instagram.ts` (all behind `requireAuth`): `POST /instagram/connect/start` → `{ authorizeUrl }` and sets a signed HttpOnly `ig_oauth_state` cookie (`OAUTH_STATE_SECRET`, 10 min, bound to the user; `Path=/` because the browser reaches the API under the `/api` proxy prefix); `POST /instagram/connect/callback` `{ code, state }` → verifies state, connects, syncs reels; `GET /instagram/account`; `GET /instagram/reels` (re-syncs if older than 1h, since IG CDN URLs expire); `POST /instagram/reels/sync`. 409 + `reconnect: true` when the user must reconnect.
 - Frontend: `lib/api.ts` `connectInstagram()` redirects the tab to Instagram; `/connect/instagram/callback` (no-referrer, no-frame, noindex headers in `next.config.ts`) posts code/state to the backend then returns to `/home?instagram=connected|cancelled`.
+
+**Automations API (slow path, `backend/`, all behind `requireAuth`, scoped to the user's current IG account):**
+- `src/routes/automations.ts`: `GET /automations` (newest first, each with its reel and stats from `automation_logs`: sent, failed, deliveryRate, avgLatencyMs of sent DMs, lastTriggeredAt), `POST /automations` `{ mediaId, keywords, message, buttonText, urls, name? }` → 201, `PATCH /automations/:id` (any subset, plus `status: active|paused`), `DELETE /automations/:id` → 204. 400 validation, 404 unknown reel/automation, 409 when the reel already has one, 409 + `reconnect: true` on an expired token (create only).
+- `src/automations/validation.ts`: server-side limits (message 1000, button 20, keyword 50 chars, max 30 keywords / 10 links, http(s) links only). Keywords are deduplicated by `normalizeForMatch`.
+- Webhook subscription: `subscribeToWebhooks` (`POST graph.instagram.com/<v>/me/subscribed_apps?subscribed_fields=comments`) runs after connecting an account and every time an automation is saved active (it's idempotent). Failures are logged and don't block the save.
 
 **Frontend so far:**
 - `/` — public landing page linking to signup/login. `/login`, `/signup` — auth forms.
 - App pages use `components/AppShell.tsx` + `components/Sidebar.tsx` (nav: Home `/home`, Automations `/automations`; account menu with sign out), behind `RequireAuth`.
 - `/home` — `components/InstagramHome.tsx`: connect button when no account, reconnect prompt when the token expired, otherwise a grid of the user's reels (`components/ReelCard.tsx`) with a Refresh button.
-- `/automations` — automations dashboard: lists current automations (mock data for now, no API) as cards showing trigger keyword, target post/reel, active/paused status, and delivery rate / avg latency / DM volume; includes an empty state. Has an "Add automation" button.
-- `/automations/new` — placeholder route the "Add automation" button links to; form not built yet.
+- Clicking a reel opens `components/AutomationDrawer.tsx`, a right-hand side panel with trigger words (chips), DM message, button text, links (one per line) and a preview. Every field uses `dir="auto"` for Arabic. It creates the reel's automation, or edits it if the reel already has one; `ReelCard` shows an "Automation on/paused" badge.
+- `/automations` — `components/AutomationsDashboard.tsx`: real list from `GET /automations` with reel thumbnail, keywords, status, delivery rate / avg latency / DMs sent, and Edit (same side panel), Pause/Resume and Delete. "Add automation" links to `/home`; `/automations/new` redirects there.
 - No shadcn/ui or Recharts installed yet despite being the planned choice — current UI is hand-rolled Tailwind matching the create-next-app starter style (zinc palette, dark mode via `prefers-color-scheme`).

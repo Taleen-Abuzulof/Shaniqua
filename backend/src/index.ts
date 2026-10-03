@@ -4,6 +4,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { csrf } from 'hono/csrf'
 import { authRoutes } from './routes/auth.js'
+import { automationRoutes } from './routes/automations.js'
 import { instagramRoutes } from './routes/instagram.js'
 
 const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:3000'
@@ -29,6 +30,7 @@ app.get('/', (c) => {
 
 app.route('/auth', authRoutes)
 app.route('/instagram', instagramRoutes)
+app.route('/automations', automationRoutes)
 
 const port = Number(process.env.PORT) || 4000
 

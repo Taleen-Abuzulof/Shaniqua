@@ -2,15 +2,16 @@
   "name": "backend",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch --conditions=source src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "db:test": "tsx src/db/test-connection.ts"
+    "db:test": "tsx --conditions=source src/db/test-connection.ts"
   },
   "dependencies": {
+    "@shaniqua/shared": "*",
     "@hono/node-server": "^2.1.1",
     "@supabase/supabase-js": "^2.116.0",
     "dotenv": "^18.0.0",

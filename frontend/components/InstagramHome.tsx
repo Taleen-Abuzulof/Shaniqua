@@ -4,13 +4,18 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   ApiError,
+  createAutomation,
   getInstagramReels,
+  listAutomations,
+  updateAutomation,
   needsInstagramReconnect,
   syncInstagramReels,
+  type Automation,
+  type AutomationInput,
   type InstagramReel,
   type InstagramReelsResponse,
 } from "../lib/api";
-import AutomationDrawer, { type AutomationDraft } from "./AutomationDrawer";
+import AutomationDrawer from "./AutomationDrawer";
 import ConnectInstagramButton from "./ConnectInstagramButton";
 import ReelCard from "./ReelCard";
 
@@ -149,10 +154,31 @@ function ReelsSection({
   const { account, reels, syncError } = data;
   const [selectedReel, setSelectedReel] = useState<InstagramReel | null>(null);
   const closeDrawer = useCallback(() => setSelectedReel(null), []);
+  const [automations, setAutomations] = useState<Automation[]>([]);
+  const [automationsError, setAutomationsError] = useState<string | null>(null);
 
-  function handleCreateAutomation(draft: AutomationDraft) {
-    // TODO: send the draft to the backend once the automations API exists.
-    void draft;
+  useEffect(() => {
+    listAutomations().then(setAutomations, (err: unknown) => {
+      setAutomationsError(
+        err instanceof Error ? err.message : "Couldn't load your automations.",
+      );
+    });
+  }, []);
+
+  // One automation per reel, so the reel's id finds it.
+  const automationByReel = new Map(automations.map((a) => [a.mediaId, a]));
+
+  async function handleSave(input: AutomationInput) {
+    const existing = automationByReel.get(input.mediaId);
+    const saved = existing
+      ? await updateAutomation(existing.id, {
+          keywords: input.keywords,
+          message: input.message,
+          buttonText: input.buttonText,
+          urls: input.urls,
+        })
+      : await createAutomation(input);
+    setAutomations((current) => [saved, ...current.filter((a) => a.id !== saved.id)]);
     setSelectedReel(null);
   }
 
@@ -189,6 +215,12 @@ function ReelsSection({
         </button>
       </div>
 
+      {automationsError ? (
+        <p className="text-sm text-amber-700 dark:text-amber-400" role="status">
+          {automationsError}
+        </p>
+      ) : null}
+
       {syncError ? (
         <p className="text-sm text-amber-700 dark:text-amber-400" role="status">
           {syncError}
@@ -207,7 +239,12 @@ function ReelsSection({
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {reels.map((reel) => (
-            <ReelCard key={reel.id} reel={reel} onSelect={setSelectedReel} />
+            <ReelCard
+              key={reel.id}
+              reel={reel}
+              automationStatus={automationByReel.get(reel.id)?.status}
+              onSelect={setSelectedReel}
+            />
           ))}
         </div>
       )}
@@ -216,8 +253,9 @@ function ReelsSection({
         <AutomationDrawer
           key={selectedReel.id}
           reel={selectedReel}
+          automation={automationByReel.get(selectedReel.id)}
           onClose={closeDrawer}
-          onSubmit={handleCreateAutomation}
+          onSave={handleSave}
         />
       ) : null}
     </section>

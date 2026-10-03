@@ -1,0 +1,23 @@
+{
+  "name": "shaniqua-api",
+  "version": "1.0.0",
+  "description": "Fast path: receives Meta comment webhooks and sends the automated DMs.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --conditions=source src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "tsx --conditions=source --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@shaniqua/shared": "*",
+    "dotenv": "^18.0.0",
+    "fastify": "^5.12.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.0",
+    "typescript": "^7.0.2"
+  }
+}

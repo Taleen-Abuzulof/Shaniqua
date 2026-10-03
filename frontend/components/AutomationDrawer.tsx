@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import type { InstagramReel } from "../lib/api";
+import type { Automation, AutomationInput, InstagramReel } from "../lib/api";
 
 // Instagram's limits: message text is capped at 1000 characters and button
 // titles at 20.
@@ -12,13 +12,8 @@ const KEYWORD_MAX = 50;
 const KEYWORD_SEPARATORS = /[,،]/;
 const DEFAULT_BUTTON_TEXT = "Show me more";
 
-export type AutomationDraft = {
-  reelId: string;
-  keywords: string[];
-  message: string;
-  buttonText: string;
-  urls: string[];
-};
+/** The reel fields the panel shows; satisfied by a reel or an automation's `media`. */
+export type DrawerReel = Pick<InstagramReel, "id" | "caption" | "thumbnailUrl" | "permalink">;
 
 type Errors = Partial<Record<"keywords" | "message" | "buttonText" | "urls", string>>;
 
@@ -99,18 +94,23 @@ function validate(
 }
 
 /**
- * Right-hand side panel for setting up the DM a reel's automation sends.
- * Mount it with `key={reel.id}` so switching reels starts a fresh form.
+ * Right-hand side panel for setting up the DM a reel's automation sends, or
+ * editing it when the reel already has one (`automation`). Mount it with
+ * `key={reel.id}` so switching reels starts a fresh form. `onSave` creates or
+ * updates; if it throws, the error shows in the panel.
  */
 export default function AutomationDrawer({
   reel,
+  automation,
   onClose,
-  onSubmit,
+  onSave,
 }: {
-  reel: InstagramReel;
+  reel: DrawerReel;
+  automation?: Automation;
   onClose: () => void;
-  onSubmit: (draft: AutomationDraft) => void;
+  onSave: (input: AutomationInput) => Promise<void>;
 }) {
+  const isEditing = Boolean(automation);
   const titleId = useId();
   const keywordsId = useId();
   const messageId = useId();
@@ -119,12 +119,14 @@ export default function AutomationDrawer({
   const panelRef = useRef<HTMLDivElement>(null);
   const keywordInputRef = useRef<HTMLInputElement>(null);
 
-  const [keywords, setKeywords] = useState<string[]>([]);
+  const [keywords, setKeywords] = useState<string[]>(automation?.keywords ?? []);
   const [keywordInput, setKeywordInput] = useState("");
-  const [message, setMessage] = useState("");
-  const [buttonText, setButtonText] = useState(DEFAULT_BUTTON_TEXT);
-  const [urlsText, setUrlsText] = useState("");
+  const [message, setMessage] = useState(automation?.message ?? "");
+  const [buttonText, setButtonText] = useState(automation?.buttonText ?? DEFAULT_BUTTON_TEXT);
+  const [urlsText, setUrlsText] = useState(automation?.urls.join("\n") ?? "");
   const [errors, setErrors] = useState<Errors>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
 
   const urls = parseUrls(urlsText);
@@ -199,8 +201,9 @@ export default function AutomationDrawer({
     keywordInputRef.current?.focus();
   }
 
-  function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (isSaving) return;
     // Count a word that was typed but not yet added with Enter.
     const finalKeywords = addKeywords(keywords, [keywordInput]);
     setKeywords(finalKeywords);
@@ -210,13 +213,20 @@ export default function AutomationDrawer({
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
-    onSubmit({
-      reelId: reel.id,
-      keywords: finalKeywords,
-      message: message.trim(),
-      buttonText: buttonText.trim(),
-      urls,
-    });
+    setSaveError(null);
+    setIsSaving(true);
+    try {
+      await onSave({
+        mediaId: reel.id,
+        keywords: finalKeywords,
+        message: message.trim(),
+        buttonText: buttonText.trim(),
+        urls,
+      });
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Something went wrong.");
+      setIsSaving(false);
+    }
   }
 
   const fieldClass =
@@ -247,7 +257,7 @@ export default function AutomationDrawer({
               id={titleId}
               className="text-base font-semibold tracking-tight text-black dark:text-zinc-50"
             >
-              New automation
+              {isEditing ? "Edit automation" : "New automation"}
             </h2>
             <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">
               Send a DM when someone comments on this reel.
@@ -436,6 +446,15 @@ export default function AutomationDrawer({
             <DmPreview message={message} buttonText={buttonText} urls={urls} />
           </div>
 
+          {saveError ? (
+            <p
+              role="alert"
+              className="px-6 py-3 text-sm text-red-600 dark:text-red-400"
+            >
+              {saveError}
+            </p>
+          ) : null}
+
           <footer className="flex items-center justify-end gap-3 border-t border-black/[.08] px-6 py-4 dark:border-white/[.145]">
             <button
               type="button"
@@ -446,9 +465,10 @@ export default function AutomationDrawer({
             </button>
             <button
               type="submit"
-              className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
+              disabled={isSaving}
+              className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
             >
-              Create automation
+              {isSaving ? "Saving…" : isEditing ? "Save changes" : "Create automation"}
             </button>
           </footer>
         </form>

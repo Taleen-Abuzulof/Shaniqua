@@ -157,6 +157,24 @@ export async function getProfile(accessToken: string) {
   )
 }
 
+// Webhook fields the fast path (shaniqua-api) listens to.
+export const WEBHOOK_FIELDS = ['comments']
+
+/**
+ * Subscribes the account to this app's webhooks so Meta sends its comment
+ * events. Idempotent. The app's webhook callback must also be configured in
+ * the Meta app dashboard for events to arrive.
+ */
+export async function subscribeToWebhooks(accessToken: string) {
+  await request<{ success: boolean }>(
+    graphUrl('/me/subscribed_apps', {
+      subscribed_fields: WEBHOOK_FIELDS.join(','),
+      access_token: accessToken,
+    }),
+    { method: 'POST' },
+  )
+}
+
 export type InstagramMedia = {
   id: string
   caption?: string

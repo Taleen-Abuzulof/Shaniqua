@@ -41,8 +41,6 @@ export const mediaProductType = pgEnum('media_product_type', ['FEED', 'REELS', '
 
 export const automationStatus = pgEnum('automation_status', ['active', 'paused'])
 
-export const keywordMatchType = pgEnum('keyword_match_type', ['contains', 'exact'])
-
 export const deliveryStatus = pgEnum('delivery_status', ['sent', 'failed'])
 
 /** A connected Instagram professional account. */
@@ -98,7 +96,11 @@ export const media = pgTable(
   (t) => [index('media_ig_account_posted_at_idx').on(t.igAccountId, t.postedAt)],
 )
 
-/** Trigger rule (post/reel + keyword) and the DM template it sends. */
+/**
+ * Trigger rule (reel + keywords) and the DM it sends. A comment triggers it
+ * when it contains any keyword, compared after `normalizeForMatch` (see
+ * keywords.ts). One automation per reel.
+ */
 export const automations = pgTable(
   'automations',
   {
@@ -108,12 +110,16 @@ export const automations = pgTable(
       .references(() => igAccounts.id, { onDelete: 'cascade' }),
     mediaId: uuid('media_id')
       .notNull()
+      .unique()
       .references(() => media.id, { onDelete: 'cascade' }),
-    name: text('name').notNull(),
-    keyword: text('keyword').notNull(),
-    matchType: keywordMatchType('match_type').notNull().default('contains'),
+    name: text('name'),
+    // As the user typed them; normalized at match time.
+    keywords: text('keywords').array().notNull(),
     // Templated text only; nothing in the send path may call out to an LLM.
     messageTemplate: text('message_template').notNull(),
+    // One button for the DM; `urls` are sent as links in the same message.
+    buttonText: text('button_text').notNull(),
+    urls: text('urls').array().notNull(),
     status: automationStatus('status').notNull().default('active'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true })
@@ -121,10 +127,7 @@ export const automations = pgTable(
       .defaultNow()
       .$onUpdate(() => new Date()),
   },
-  (t) => [
-    index('automations_ig_account_id_idx').on(t.igAccountId),
-    index('automations_media_id_idx').on(t.mediaId),
-  ],
+  (t) => [index('automations_ig_account_id_idx').on(t.igAccountId)],
 )
 
 /** One row per attempted DM; feeds the performance dashboard. Written after the send. */

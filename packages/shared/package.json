@@ -1,0 +1,34 @@
+{
+  "name": "@shaniqua/shared",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./db/schema": {
+      "source": "./src/db/schema.ts",
+      "types": "./src/db/schema.ts",
+      "default": "./dist/db/schema.js"
+    },
+    "./crypto": {
+      "source": "./src/crypto.ts",
+      "types": "./src/crypto.ts",
+      "default": "./dist/crypto.js"
+    },
+    "./keywords": {
+      "source": "./src/keywords.ts",
+      "types": "./src/keywords.ts",
+      "default": "./dist/keywords.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.0",
+    "typescript": "^7.0.2"
+  }
+}

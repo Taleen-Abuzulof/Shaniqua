@@ -188,3 +188,81 @@ export async function syncInstagramReels() {
 export function needsInstagramReconnect(err: unknown) {
   return err instanceof ApiError && err.body.reconnect === true;
 }
+
+// ---------------------------------------------------------------------------
+// Automations
+// ---------------------------------------------------------------------------
+
+export type AutomationStatus = "active" | "paused";
+
+export type Automation = {
+  id: string;
+  mediaId: string;
+  name: string | null;
+  keywords: string[];
+  message: string;
+  buttonText: string;
+  urls: string[];
+  status: AutomationStatus;
+  createdAt: string;
+  updatedAt: string;
+  media: {
+    id: string;
+    igMediaId: string;
+    caption: string | null;
+    permalink: string;
+    thumbnailUrl: string | null;
+    postedAt: string;
+  };
+  stats: {
+    sent: number;
+    failed: number;
+    // Share (0-1) of attempted DMs that were delivered; null before the first attempt.
+    deliveryRate: number | null;
+    avgLatencyMs: number | null;
+    lastTriggeredAt: string | null;
+  };
+};
+
+/** What the side panel collects; `mediaId` is the reel's `id` (not its Instagram id). */
+export type AutomationInput = {
+  mediaId: string;
+  keywords: string[];
+  message: string;
+  buttonText: string;
+  urls: string[];
+};
+
+async function patchJson(path: string, body: unknown) {
+  return requestJson(path, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+/** The connected account's automations, newest first, with delivery stats. */
+export async function listAutomations() {
+  const data = (await getJson("/automations")) as { automations: Automation[] };
+  return data.automations;
+}
+
+export async function createAutomation(input: AutomationInput) {
+  const data = (await postJson("/automations", input)) as { automation: Automation };
+  return data.automation;
+}
+
+/** Changes only the given fields. */
+export async function updateAutomation(
+  id: string,
+  changes: Partial<Omit<AutomationInput, "mediaId"> & { status: AutomationStatus }>,
+) {
+  const data = (await patchJson(`/automations/${encodeURIComponent(id)}`, changes)) as {
+    automation: Automation;
+  };
+  return data.automation;
+}
+
+export async function deleteAutomation(id: string) {
+  await requestJson(`/automations/${encodeURIComponent(id)}`, { method: "DELETE" });
+}

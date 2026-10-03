@@ -1,7 +1,7 @@
 import { and, desc, eq, ne, sql } from 'drizzle-orm'
-import { decryptSecret, encryptSecret } from '../crypto.js'
+import { decryptSecret, encryptSecret } from '@shaniqua/shared/crypto'
 import { db } from '../db/index.js'
-import { igAccounts, media } from '../db/schema.js'
+import { igAccounts, media } from '@shaniqua/shared/db/schema'
 import {
   exchangeCodeForToken,
   exchangeForLongLivedToken,
@@ -9,9 +9,10 @@ import {
   InstagramApiError,
   listMedia,
   refreshLongLivedToken,
+  subscribeToWebhooks,
 } from './api.js'
 
-type IgAccount = typeof igAccounts.$inferSelect
+export type IgAccount = typeof igAccounts.$inferSelect
 
 // Refresh the 60-day token once it has less than this left.
 const TOKEN_REFRESH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
@@ -134,6 +135,23 @@ async function getAccessToken(account: IgAccount) {
     }
     // Refresh is best effort; the current token is still valid for a while.
     return token
+  }
+}
+
+/**
+ * Makes sure Meta sends this account's comment events to the app. Throws
+ * InstagramReconnectRequiredError if the token is no longer valid.
+ */
+export async function ensureWebhookSubscription(account: IgAccount) {
+  const token = await getAccessToken(account)
+  try {
+    await subscribeToWebhooks(token)
+  } catch (err) {
+    if (err instanceof InstagramApiError && err.isAuthError) {
+      await markTokenExpired(account)
+      throw new InstagramReconnectRequiredError()
+    }
+    throw err
   }
 }
 

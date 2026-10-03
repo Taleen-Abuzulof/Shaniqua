@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { InstagramReel } from "../lib/api";
+import type { AutomationStatus, InstagramReel } from "../lib/api";
 
 const dateFormat = new Intl.DateTimeFormat(undefined, {
   month: "short",
@@ -11,9 +11,12 @@ const dateFormat = new Intl.DateTimeFormat(undefined, {
 
 export default function ReelCard({
   reel,
+  automationStatus,
   onSelect,
 }: {
   reel: InstagramReel;
+  // Set when the reel has an automation.
+  automationStatus?: AutomationStatus;
   onSelect: (reel: InstagramReel) => void;
 }) {
   // Instagram CDN URLs are signed and expire; fall back to a placeholder.
@@ -44,6 +47,17 @@ export default function ReelCard({
             Preview unavailable
           </span>
         )}
+        {automationStatus ? (
+          <span
+            className={`absolute left-2 top-2 rounded-full px-2 py-0.5 text-xs font-medium backdrop-blur ${
+              automationStatus === "active"
+                ? "bg-emerald-500/90 text-white"
+                : "bg-black/60 text-white"
+            }`}
+          >
+            {automationStatus === "active" ? "Automation on" : "Automation paused"}
+          </span>
+        ) : null}
       </div>
       <div className="flex flex-1 flex-col gap-2 p-3">
         <p dir="auto" className="line-clamp-2 text-sm text-black dark:text-zinc-50">

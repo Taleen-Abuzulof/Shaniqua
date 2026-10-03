@@ -1,10 +1,13 @@
 {
-  "type": "module",
-  "dependencies": {
-    "@supabase/ssr": "^0.12.7",
-    "@supabase/supabase-js": "^2.116.0",
-    "express": "^5.2.1",
-    "fastify": "^5.12.5",
-    "http-proxy-middleware": "^4.2.0"
+  "name": "shaniqua",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "backend",
+    "shaniqua-api"
+  ],
+  "scripts": {
+    "build": "npm run build -w @shaniqua/shared && npm run build -w backend -w shaniqua-api",
+    "test": "npm test -w @shaniqua/shared -w shaniqua-api"
   }
 }
